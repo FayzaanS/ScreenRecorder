@@ -29,48 +29,24 @@ jobs:
           (sleep 2; for _ in 1 2 3; do afplay /System/Library/Sounds/Ping.aiff; done) &
           build/smoke-test build/smoke-test.mp4
 
-      - name: Click through the real app (temporary check)
+      - name: Install with build.sh (temporary check)
         run: |
           set -x
-          icon='menu bar item 1 of menu bar 1'
-          ax() { osascript -e "tell application \"System Events\" to tell process \"ScreenRecorder\" to $1"; }
-          cat > build/check.swift <<'EOF'
-          import AVFoundation
-          let asset = AVURLAsset(url: URL(fileURLWithPath: CommandLine.arguments[1]))
-          let duration = try await asset.load(.duration).seconds
-          let video = try await asset.loadTracks(withMediaType: .video)
-          let audio = try await asset.loadTracks(withMediaType: .audio)
-          print("duration \(duration) s, video tracks: \(video.count), audio tracks: \(audio.count)")
-          EOF
-
-          "build/Screen Recorder.app/Contents/MacOS/ScreenRecorder" &
+          ./build.sh
           sleep 3
-          ax "get {description, title, help, size} of $icon"
-
-          # Open the menu (clicking a status item blocks until its menu closes, hence the dance).
-          osascript -e 'ignoring application responses' -e "tell application \"System Events\" to tell process \"ScreenRecorder\" to click $icon" -e 'end ignoring'
-          sleep 1
-          killall "System Events" || true
-          sleep 1
-          ax "get name of every menu item of menu 1 of $icon"
-          ax "click menu item \"Start Recording\" of menu 1 of $icon"
-          (sleep 1; afplay /System/Library/Sounds/Glass.aiff; afplay /System/Library/Sounds/Hero.aiff) &
-          sleep 5
-          ax "get {description, title, help} of $icon"
-
-          # Click the red stop icon.
-          ax "click $icon"
+          pgrep -fl "Screen Recorder.app"
+          # Running it again should quit the open copy, replace it and open the new one.
+          ./build.sh
           sleep 3
-          ax "get {description, title, help} of $icon"
-          ls -la ~/Movies/"Screen Recordings"
-          for f in ~/Movies/"Screen Recordings"/*.mp4; do xcrun swift build/check.swift "$f"; done
-          osascript -e 'tell application "System Events" to get name of every window of process "Finder"'
-
-          # Opening the app again should pop its menu open.
-          open "build/Screen Recorder.app"
-          sleep 2
-          pgrep -fl ScreenRecorder || true
-          ax "get name of every menu item of menu 1 of $icon"
-          ax "click menu item \"Quit Screen Recorder\" of menu 1 of $icon"
-          sleep 2
-          if pgrep -f "MacOS/ScreenRecorder"; then echo "app still running"; exit 1; else echo "app quit"; fi
+          pgrep -fl "Screen Recorder.app"
+          [[ $(pgrep -f "Screen Recorder.app" | wc -l) -eq 1 ]]
+          codesign --verify --verbose "/Applications/Screen Recorder.app"
+          defaults read "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier
+          # It must not replace some other app that happens to have the same name.
+          pkill -f "Screen Recorder.app" || true
+          sleep 1
+          rm -rf "/Applications/Screen Recorder.app"
+          mkdir -p "/Applications/Screen Recorder.app/Contents"
+          defaults write "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier com.example.other
+          if ./build.sh; then echo "replaced another app"; exit 1; fi
+          defaults read "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier
