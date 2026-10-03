@@ -28,3 +28,42 @@ jobs:
           # Play some sounds while recording so there is system audio to capture.
           (sleep 2; for _ in 1 2 3; do afplay /System/Library/Sounds/Ping.aiff; done) &
           build/smoke-test build/smoke-test.mp4
+
+      - name: Click through the real app (temporary check)
+        run: |
+          set -x
+          ax() { osascript -e "tell application \"System Events\" to tell process \"ScreenRecorder\" to $1"; }
+          "build/Screen Recorder.app/Contents/MacOS/ScreenRecorder" &
+          sleep 3
+          screencapture -x build/1-idle.png
+          ax 'get {description, title, help} of menu bar item 1 of menu bar 2'
+          osascript <<'EOF'
+          ignoring application responses
+            tell application "System Events" to tell process "ScreenRecorder" to click menu bar item 1 of menu bar 2
+          end ignoring
+          EOF
+          sleep 1
+          screencapture -x build/2-menu.png
+          killall "System Events" || true
+          sleep 1
+          ax 'click menu item "Start Recording" of menu 1 of menu bar item 1 of menu bar 2'
+          (sleep 1; afplay /System/Library/Sounds/Glass.aiff; afplay /System/Library/Sounds/Hero.aiff) &
+          sleep 5
+          screencapture -x build/3-recording.png
+          ax 'get {description, title, help} of menu bar item 1 of menu bar 2'
+          ax 'click menu bar item 1 of menu bar 2'
+          sleep 3
+          screencapture -x build/4-saved.png
+          ls -la ~/Movies/"Screen Recordings"
+          for f in ~/Movies/"Screen Recordings"/*.mp4; do afinfo "$f" || true; done
+          open "build/Screen Recorder.app"
+          sleep 2
+          screencapture -x build/5-reopened.png
+          pkill -f ScreenRecorder || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: screenshots-${{ matrix.os }}
+          path: build/*.png
