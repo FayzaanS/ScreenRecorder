@@ -7,11 +7,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, macos-14]
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -28,25 +24,3 @@ jobs:
           # Play some sounds while recording so there is system audio to capture.
           (sleep 2; for _ in 1 2 3; do afplay /System/Library/Sounds/Ping.aiff; done) &
           build/smoke-test build/smoke-test.mp4
-
-      - name: Install with build.sh (temporary check)
-        run: |
-          set -x
-          ./build.sh
-          sleep 3
-          pgrep -fl "Screen Recorder.app"
-          # Running it again should quit the open copy, replace it and open the new one.
-          ./build.sh
-          sleep 3
-          pgrep -fl "Screen Recorder.app"
-          [[ $(pgrep -f "Screen Recorder.app" | wc -l) -eq 1 ]]
-          codesign --verify --verbose "/Applications/Screen Recorder.app"
-          defaults read "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier
-          # It must not replace some other app that happens to have the same name.
-          pkill -f "Screen Recorder.app" || true
-          sleep 1
-          rm -rf "/Applications/Screen Recorder.app"
-          mkdir -p "/Applications/Screen Recorder.app/Contents"
-          defaults write "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier com.example.other
-          if ./build.sh; then echo "replaced another app"; exit 1; fi
-          defaults read "/Applications/Screen Recorder.app/Contents/Info" CFBundleIdentifier

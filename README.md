@@ -6,7 +6,7 @@ A small menu bar app for your Mac that records your whole screen **and the sound
 2. While it records, the icon turns into a red ⏹ with a timer. Click it to **stop**.
 3. The video is saved in **Movies → Screen Recordings**, and Finder opens to it.
 
-It records whatever you'd hear: videos, music, people on a call. Your microphone is **not** recorded. Recordings are regular `.mp4` files that play almost anywhere (full resolution, 30 frames per second, roughly 4 GB per hour).
+It records whatever you'd hear: videos, music, people on a call. Your microphone is **not** recorded. Recordings are regular `.mp4` files that play almost anywhere, at full resolution and 30 frames per second. They take up to about 4 GB per hour, and much less when the screen is mostly still.
 
 ## Install
 
